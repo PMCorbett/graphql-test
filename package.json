@@ -5,6 +5,7 @@
   "dependencies": {
     "apollo-boost": "^0.1.3",
     "apollo-link-rest": "^0.2.3",
+    "axios": "^0.18.0",
     "graphql": "^0.13.1",
     "ramda": "^0.25.0",
     "react": "^16.2.0",

@@ -5,47 +5,98 @@ import { ApolloClient } from 'apollo-client';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import { RestLink } from 'apollo-link-rest';
 import { gql } from 'apollo-boost';
+import axios from 'axios';
 import logo from './logo.svg';
 import './App.css';
+import secrets from './.secrets.json';
 
 const camelCase = (str) =>
   str.replace(/[-_]([a-z])/g, (m) => m[1].toUpperCase());
 
-const customFetch = (endpoint, options) => {
-  return new Promise((resolve, reject) => {
-    fetch(endpoint, options)
-      .then(function(response) {
-        if (response.status !== 200) {
-          console.log(
-            'Looks like there was a problem. Status Code: ' + response.status
-          );
-          reject(response);
-        }
-
-        // Examine the text in the response
-        response.json().then((data) => {
-          const flatData = data[Object.keys(data)[0]];
-          const fudgedResponse = new Response(JSON.stringify(flatData), {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
-          });
-          resolve(fudgedResponse);
-        });
-      })
-      .catch(function(err) {
-        reject(err);
-      });
+const fetchToken = () =>
+  axios.post('oauth/token', {
+    client_id: secrets.client_id,
+    client_secret: secrets.client_secret,
+    grant_type: 'password',
+    username: secrets.username,
+    password: secrets.password,
   });
+
+const getAccessToken = () => {
+  if (JSON.parse(localStorage.getItem('token'))) {
+    return new Promise((resolve, reject) => {
+      const token = JSON.parse(window.localStorage.getItem('token'));
+      resolve(token);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    fetchToken().then(({ data }) => {
+      resolve(data);
+    });
+  });
+};
+
+const storeAccessToken = (token) => {
+  window.localStorage.setItem('token', JSON.stringify(token));
+
+  return token;
+};
+
+const accessToken = () =>
+  getAccessToken().then((stuff) => {
+    return storeAccessToken(stuff);
+  });
+
+const authorizeRequest = (options) => {
+  return accessToken().then((data) => {
+    options.headers.set('X-Crowdlab-Tenant', 'crowdlab');
+    options.headers.set('Authorization', `Bearer ${data.access_token}`);
+    return options;
+  });
+};
+
+const customFetch = (endpoint, options) => {
+  authorizeRequest(options)
+    .then((authorizedOptions) => {
+      console.log(authorizedOptions);
+
+      return new Promise((resolve, reject) => {
+        fetch(endpoint, authorizedOptions)
+          .then(function(response) {
+            if (response.status !== 200) {
+              console.log(
+                'Looks like there was a problem. Status Code: ' +
+                  response.status
+              );
+              reject(response);
+            }
+
+            // Examine the text in the response
+            response.json().then((data) => {
+              const flatData = data[Object.keys(data)[0]];
+              const fudgedResponse = new Response(JSON.stringify(flatData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+              });
+              resolve(fudgedResponse);
+            });
+          })
+          .catch(function(err) {
+            reject(err);
+          });
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 const restLink = new RestLink({
   uri: '/',
   credentials: 'same-origin',
   headers: {
-    'X-Crowdlab-Tenant': 'crowdlab',
-    Authorization:
-      'Bearer 221f0f371aa160735e108800a002efa0e1e78893a446dac76dce6b9fc2517612',
     'Access-Control-Allow-Origin': '*',
   },
   fieldNameNormalizer: camelCase,
