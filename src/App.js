@@ -40,7 +40,7 @@ const customFetch = (endpoint, options) => {
 };
 
 const restLink = new RestLink({
-  uri: 'https://cors-anywhere.herokuapp.com/https://api.crowdlab.io/',
+  uri: '/',
   credentials: 'same-origin',
   headers: {
     'X-Crowdlab-Tenant': 'crowdlab',

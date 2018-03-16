@@ -20,5 +20,6 @@
   },
   "devDependencies": {
     "prettier": "^1.11.1"
-  }
+  },
+  "proxy": "https://api.crowdlab.io/"
 }
