@@ -1,4 +1,3 @@
-import * as R from 'ramda';
 import React, { Component } from 'react';
 import { ApolloProvider, Query } from 'react-apollo';
 import { ApolloClient } from 'apollo-client';
@@ -43,6 +42,13 @@ const storeAccessToken = (token) => {
   return token;
 };
 
+const removeSavedToken = () => {
+  return new Promise((resolve, reject) => {
+    window.localStorage.removeItem('token');
+    resolve();
+  });
+};
+
 const accessToken = () =>
   getAccessToken().then((stuff) => {
     return storeAccessToken(stuff);
@@ -57,10 +63,8 @@ const authorizeRequest = (options) => {
 };
 
 const customFetch = (endpoint, options) => {
-  authorizeRequest(options)
+  return authorizeRequest(options)
     .then((authorizedOptions) => {
-      console.log(authorizedOptions);
-
       return new Promise((resolve, reject) => {
         fetch(endpoint, authorizedOptions)
           .then(function(response) {
@@ -69,6 +73,13 @@ const customFetch = (endpoint, options) => {
                 'Looks like there was a problem. Status Code: ' +
                   response.status
               );
+
+              if (response.status === 401) {
+                return removeSavedToken().then(() =>
+                  customFetch(endpoint, options)
+                );
+              }
+
               reject(response);
             }
 
